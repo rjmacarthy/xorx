@@ -43,8 +43,4 @@ pub const Node = struct {
     pub fn find_k_closest(self: *Node, target: NodeId, k: usize) []const NodeId {
         return self.routing_table.get_k_closest_nodes(target, k);
     }
-
-    pub fn printLocalNode(self: *DHT) !void {
-        try self.local_node.id.print("Local Node");
-    }
 };
