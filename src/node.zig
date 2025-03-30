@@ -30,9 +30,13 @@ pub const Node = struct {
     routing_table: RoutingTable,
 
     pub fn init(id: NodeId) Node {
+        var buffer: [1024]u8 = undefined;
+        var fba = std.heap.FixedBufferAllocator.init(&buffer);
+        const allocator = fba.allocator();
+        const rt = try RoutingTable.init(allocator);
         return Node{
             .id = id,
-            .routing_table = RoutingTable.init(),
+            .routing_table = rt,
         };
     }
 
