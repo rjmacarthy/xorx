@@ -3,22 +3,26 @@ const node = @import("node.zig");
 const errors = @import("errors.zig");
 const utils = @import("utils.zig");
 const constants = @import("constants.zig");
-const mem = std.mem;
-const Node = node.Node;
+
 const NodeId = node.NodeId;
+const mem = std.mem;
 const BUCKET_COUNT = 160;
 const K = 8;
 
+const RoutingEntry = struct {
+    id: NodeId,
+    last_seen: i64,
+    address: std.net.Address,
+};
+
 pub const RoutingTable = struct {
-    buckets: [BUCKET_COUNT]std.ArrayList(NodeId),
+    buckets: [BUCKET_COUNT]std.ArrayList(RoutingEntry),
 
     pub fn init(allocator: std.mem.Allocator) !RoutingTable {
-        var buckets: [BUCKET_COUNT]std.ArrayList(NodeId) = undefined;
+        var buckets: [BUCKET_COUNT]std.ArrayList(RoutingEntry) = undefined;
 
-        var i: usize = 0;
-
-        while (i < BUCKET_COUNT) : (i += 1) {
-            buckets[i] = std.ArrayList(NodeId).init(allocator);
+        for (&buckets) |*bucket| {
+            bucket.* = std.ArrayList(RoutingEntry).init(allocator);
         }
 
         return RoutingTable{
@@ -32,17 +36,44 @@ pub const RoutingTable = struct {
         }
     }
 
+    pub fn ping_node(self: *RoutingTable, entry: RoutingEntry) !bool {
+        _ = self;
+        _ = entry;
+        return std.crypto.random.int(u1) == 0;
+    }
+
     pub fn add_node(self: *RoutingTable, new_node: NodeId, local_id: NodeId) errors.RoutingTableError!void {
         const dist = utils.xor_distance(new_node.id, local_id.id);
         const bucket_idx = utils.get_bucket_index(dist);
+        const bucket = &self.buckets[bucket_idx];
 
-        const bucket = self.buckets[bucket_idx];
-
-        if (bucket.items.len >= K) {
-            return errors.RoutingTableError.NoSpace;
+        for (bucket.items) |item| {
+            if (mem.eql(u8, &item.id.id, &new_node.id)) {
+                return;
+            }
         }
 
-        try bucket.append(new_node);
+        if (bucket.items.len < K) {
+            try bucket.append(RoutingEntry{
+                .id = new_node,
+                .last_seen = std.time.milliTimestamp(),
+                .address = try std.net.Address.parseIp4("127.0.0.1", 9000),
+            });
+            return;
+        }
+
+        const oldest = bucket.items[0];  // assume index 0 for now
+        const success = try self.ping_node(oldest);
+
+        if (!success) {
+            bucket.items[0] = RoutingEntry{
+                .id = new_node,
+                .last_seen = std.time.milliTimestamp(),
+                .address = try std.net.Address.parseIp4("127.0.0.1", 9000),
+            };
+        } else {
+            return errors.RoutingTableError.NoSpace;
+        }
     }
 
     pub fn get_k_closest_nodes(self: *RoutingTable, target: NodeId, k: usize) []const NodeId {
@@ -51,7 +82,7 @@ pub const RoutingTable = struct {
 
         for (self.buckets) |bucket| {
             for (bucket.items) |bucket_node| {
-                all_nodes[count] = bucket_node;
+                all_nodes[count] = bucket_node.id;
                 count += 1;
             }
         }
@@ -69,7 +100,7 @@ pub const RoutingTable = struct {
                 const dist = utils.xor_distance(bucket_node.id, target.id);
 
                 if (closest == null or utils.compare_xor_distance(dist, closest_dist) == -1) {
-                    closest = bucket_node;
+                    closest = bucket_node.id;
                     closest_dist = dist;
                 }
             }
@@ -86,7 +117,7 @@ pub const RoutingTable = struct {
                 try stdout.print("  Bucket {} ({} nodes):\n", .{ i, count });
                 for (bucket.items, 0..) |bucket_node, j| {
                     try stdout.print("    Node {}: ", .{j});
-                    for (bucket_node.id) |byte| {
+                    for (bucket_node.id.id) |byte| {
                         try stdout.print("{x:0>2}", .{byte});
                     }
                     try stdout.print("\n", .{});

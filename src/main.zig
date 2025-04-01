@@ -13,7 +13,7 @@ const RndGen = std.Random.DefaultPrng;
 const os = std.os;
 
 pub fn main() !void {
-    var net = dht.DHTNetwork.init();
+    var net = try dht.DHTNetwork.init();
 
     const target = net.dhts[0].generate_target();
     const closest = net.lookup(0, target);

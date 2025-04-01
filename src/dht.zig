@@ -10,12 +10,12 @@ pub const DHT = struct {
     local_node: Node,
     prng: RndGen,
 
-    pub fn init(seed: u64) DHT {
+    pub fn init(seed: u64) !DHT {
         var prng = RndGen.init(seed);
         const rand = prng.random();
         const local_id = NodeId.random(rand);
         return DHT{
-            .local_node = Node.init(local_id),
+            .local_node = try Node.init(local_id),
             .prng = prng,
         };
     }
@@ -45,12 +45,12 @@ pub const DHT = struct {
 pub const DHTNetwork = struct {
     dhts: [10]DHT,
 
-    pub fn init() DHTNetwork {
+    pub fn init() !DHTNetwork {
         var result: DHTNetwork = undefined;
 
         var i: usize = 0;
         while (i < 10) : (i += 1) {
-            result.dhts[i] = DHT.init(@intCast(i + 42));
+            result.dhts[i] = try DHT.init(@intCast(i + 42));
         }
 
         return result;

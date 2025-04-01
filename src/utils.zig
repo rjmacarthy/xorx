@@ -64,7 +64,9 @@ test "compare_xor_distance ordering" {
 }
 
 test "get_k_closest_nodes returns sorted closest nodes" {
-    var table = routing_table.RoutingTable.init();
+    var da = std.heap.DebugAllocator(.{}){};
+    const allocator = da.allocator();
+    var table = try routing_table.RoutingTable.init(allocator);
     const target = NodeId{ .id = [_]u8{0x10} ++ [_]u8{0} ** 19 };
 
     const node1 = NodeId{ .id = [_]u8{0x11} ++ [_]u8{0} ** 19 }; // dist = 0x01

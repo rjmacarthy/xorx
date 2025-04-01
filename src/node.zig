@@ -27,17 +27,29 @@ pub const NodeId = struct {
 
 pub const Node = struct {
     id: NodeId,
+    last_seen: i64,
+    address: std.net.Address,
     routing_table: RoutingTable,
+    allocator: std.mem.Allocator,
+    buffer: [1024]u8,
 
-    pub fn init(id: NodeId) Node {
-        var buffer: [1024]u8 = undefined;
-        var fba = std.heap.FixedBufferAllocator.init(&buffer);
-        const allocator = fba.allocator();
-        const rt = try RoutingTable.init(allocator);
-        return Node{
+    pub fn init(id: NodeId) !Node {
+        var node = Node{
             .id = id,
-            .routing_table = rt,
+            .last_seen = std.time.milliTimestamp(),
+            .address = try std.net.Address.parseIp4("127.0.0.1", 9000),
+            .allocator = undefined,
+            .routing_table = undefined,
+            .buffer = undefined,
         };
+
+        // SAFER: Hold the pointer to the node directly
+        var node_ptr = &node;
+        var fba = std.heap.FixedBufferAllocator.init(&node_ptr.buffer);
+        node_ptr.allocator = fba.allocator();
+        node_ptr.routing_table = try RoutingTable.init(node_ptr.allocator);
+
+        return node;
     }
 
     pub fn add_peer(self: *Node, peer: NodeId) !void {
@@ -48,3 +60,17 @@ pub const Node = struct {
         return self.routing_table.get_k_closest_nodes(target, k);
     }
 };
+
+test "node can add peer" {
+    var prng = std.Random.DefaultPrng.init(42);
+    const rand = prng.random();
+
+    const local_id = NodeId.random(rand);
+    var node = try Node.init(local_id);
+
+    const peer_id = NodeId.random(rand);
+    try node.add_peer(peer_id);
+
+    const closest = node.find_k_closest(peer_id, 1);
+    try std.testing.expect(std.mem.eql(u8, &closest[0].id, &peer_id.id));
+}
