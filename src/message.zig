@@ -33,3 +33,23 @@ pub const Message = struct {
         };
     }
 };
+
+test "message decoder" {
+    const buffer = [_]u8{} ++ [_]u8{ 0, 10 } ** (1024);
+    const decoded = try Message.decode(buffer[0..buffer.len]);
+    try std.testing.expectEqual(decoded.type, MessageType.Ping);
+    try std.testing.expectEqual(decoded.payload_len, @as(u16, 10));
+    try std.testing.expectEqual(decoded.payload.len, @as(u16, 1024));
+}
+
+test "message encoder" {
+    const payload = [_]u8{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    var message = Message{ .payload = [_]u8{} ++ [_]u8{0} ** (1024), .payload_len = 10, .type = MessageType.Pong };
+    std.mem.copyForwards(u8, message.payload[0..payload.len], &payload);
+    var buffer: [1024]u8 = undefined;
+    const encoded = try message.encode(&buffer);
+    try std.testing.expectEqual(@as(usize, 13), encoded);
+    try std.testing.expectEqual(@as(u8, 1), buffer[0]); // pong
+    try std.testing.expectEqual(@as(u16, 10), std.mem.readInt(u16, buffer[1..3], .little));
+    try std.testing.expectEqualSlices(u8, payload[0..], buffer[3..13]);
+}

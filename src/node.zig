@@ -43,7 +43,6 @@ pub const Node = struct {
             .buffer = undefined,
         };
 
-        // SAFER: Hold the pointer to the node directly
         var node_ptr = &node;
         var fba = std.heap.FixedBufferAllocator.init(&node_ptr.buffer);
         node_ptr.allocator = fba.allocator();
