@@ -51,8 +51,8 @@ pub const Node = struct {
         return node;
     }
 
-    pub fn add_peer(self: *Node, peer: NodeId) !void {
-        try self.routing_table.add_node(peer, self.id);
+    pub fn add_peer(self: *Node, node_id: NodeId) !void {
+        try self.routing_table.add_node(node_id, self.id);
     }
 
     pub fn find_k_closest(self: *Node, target: NodeId, k: usize) []const NodeId {
