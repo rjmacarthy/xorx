@@ -29,7 +29,7 @@ pub const DHT = struct {
 };
 
 test "dht init" {
-    var dht = try DHT.init(42);
+    var dht = try DHT.init();
     try std.testing.expect(true);
 
     try dht.addNode(NodeId{ .id = [_]u8{0} ** (20) });

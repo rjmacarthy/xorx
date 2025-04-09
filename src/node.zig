@@ -67,13 +67,10 @@ pub const Node = struct {
 };
 
 test "node can add peer" {
-    var prng = std.Random.DefaultPrng.init(42);
-    const rand = prng.random();
-
-    const local_id = NodeId.random(rand);
+    const local_id = NodeId.random();
     var node = try Node.init(local_id);
 
-    const peer_id = NodeId.random(rand);
+    const peer_id = NodeId.random();
     try node.addNode(peer_id);
 
     const closest = node.getKClosest(peer_id, 1);
