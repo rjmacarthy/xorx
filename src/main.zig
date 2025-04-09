@@ -15,21 +15,21 @@ const os = std.os;
 pub fn main() !void {
     var net = try dht.DHTNetwork.init();
 
-    const target = net.dhts[0].generate_target();
-    const closest = net.lookup(0, target);
+    const target = try Node.init(NodeId{ .id = [_]u8{0} ** 20 });
+    const closest = net.lookup(0, target.id);
 
     try closest.print("Final closest");
-    try target.print("Target");
+    try target.id.print("Target");
 
-    try net.print_all();
+    try net.print();
 
     const args = try std.process.argsAlloc(std.heap.page_allocator);
-    if (args.len < 2) return error.MissingArgument;
+    if (args.len < 1) return error.MissingArgument;
 
-    if (std.mem.eql(u8, args[1], "server")) {
-        try server.run_server();
-    } else if (std.mem.eql(u8, args[1], "client")) {
-        try client.run_client();
+    if (std.mem.eql(u8, args[0], "server")) {
+        try server.runServer();
+    } else if (std.mem.eql(u8, args[0], "client")) {
+        try client.runClient();
     } else {
         std.debug.print("Usage: zig run main.zig -- server|client\n", .{});
     }

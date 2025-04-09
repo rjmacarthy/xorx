@@ -8,15 +8,15 @@ pub const MessageType = enum(u8) {
 
 pub const Message = struct {
     type: MessageType,
-    payload_len: u16,
+    payload_length: u16,
     payload: [1024]u8,
 
     pub fn encode(self: *const Message, buf: []u8) !usize {
-        if (buf.len < 3 + self.payload_len) return error.BufferTooSmall;
+        if (buf.len < 3 + self.payload_length) return error.BufferTooSmall;
         buf[0] = @intFromEnum(self.type);
-        std.mem.writeInt(u16, buf[1..3], self.payload_len, .little);
-        std.mem.copyForwards(u8, buf[3 .. 3 + self.payload_len], self.payload[0..self.payload_len]);
-        return 3 + self.payload_len;
+        std.mem.writeInt(u16, buf[1..3], self.payload_length, .little);
+        std.mem.copyForwards(u8, buf[3 .. 3 + self.payload_length], self.payload[0..self.payload_length]);
+        return 3 + self.payload_length;
     }
 
     pub fn decode(buf: []const u8) !Message {
@@ -28,7 +28,7 @@ pub const Message = struct {
         std.mem.copyForwards(u8, payload_buf[0..payload_len], buf[3 .. 3 + payload_len]);
         return Message{
             .type = msg_type,
-            .payload_len = payload_len,
+            .payload_length = payload_len,
             .payload = payload_buf,
         };
     }
@@ -38,13 +38,13 @@ test "message decoder" {
     const buffer = [_]u8{} ++ [_]u8{ 0, 10 } ** (1024);
     const decoded = try Message.decode(buffer[0..buffer.len]);
     try std.testing.expectEqual(decoded.type, MessageType.Ping);
-    try std.testing.expectEqual(decoded.payload_len, @as(u16, 10));
+    try std.testing.expectEqual(decoded.payload_length, @as(u16, 10));
     try std.testing.expectEqual(decoded.payload.len, @as(u16, 1024));
 }
 
 test "message encoder" {
     const payload = [_]u8{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-    var message = Message{ .payload = [_]u8{} ++ [_]u8{0} ** (1024), .payload_len = 10, .type = MessageType.Pong };
+    var message = Message{ .payload = [_]u8{} ++ [_]u8{0} ** (1024), .payload_length = 10, .type = MessageType.Pong };
     std.mem.copyForwards(u8, message.payload[0..payload.len], &payload);
     var buffer: [1024]u8 = undefined;
     const encoded = try message.encode(&buffer);

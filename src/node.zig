@@ -46,17 +46,17 @@ pub const Node = struct {
         var node_ptr = &node;
         var fba = std.heap.FixedBufferAllocator.init(&node_ptr.buffer);
         node_ptr.allocator = fba.allocator();
-        node_ptr.routing_table = try RoutingTable.init(node_ptr.allocator);
+        node_ptr.routing_table = try RoutingTable.init(node_ptr.allocator, node.id.id);
 
         return node;
     }
 
-    pub fn add_peer(self: *Node, node_id: NodeId) !void {
-        try self.routing_table.add_node(node_id, self.id);
+    pub fn addNode(self: *Node, node_id: NodeId) !void {
+        try self.routing_table.addNode(node_id);
     }
 
-    pub fn find_k_closest(self: *Node, target: NodeId, k: usize) []const NodeId {
-        return self.routing_table.get_k_closest_nodes(target, k);
+    pub fn getKClosest(self: *Node, target: NodeId, k: usize) []const NodeId {
+        return self.routing_table.getKClosest(target, k);
     }
 };
 
@@ -68,8 +68,8 @@ test "node can add peer" {
     var node = try Node.init(local_id);
 
     const peer_id = NodeId.random(rand);
-    try node.add_peer(peer_id);
+    try node.addNode(peer_id);
 
-    const closest = node.find_k_closest(peer_id, 1);
+    const closest = node.getKClosest(peer_id, 1);
     try std.testing.expect(std.mem.eql(u8, &closest[0].id, &peer_id.id));
 }

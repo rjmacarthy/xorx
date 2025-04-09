@@ -38,18 +38,18 @@ pub const RoutingTable = struct {
         }
     }
 
-    pub fn ping_node(self: *RoutingTable, entry: RoutingEntry) !bool {
+    pub fn pingNode(self: *RoutingTable, entry: RoutingEntry) !bool {
         _ = self;
         _ = entry;
         return std.crypto.random.int(u1) == 0;
     }
 
-    pub fn add_node(
+    pub fn addNode(
         self: *RoutingTable,
         new_node: NodeId,
     ) errors.RoutingTableError!void {
-        const dist = utils.xor_distance(new_node.id, self.local_id);
-        const bucket_idx = utils.get_bucket_index(dist);
+        const dist = utils.xorDistance(new_node.id, self.local_id);
+        const bucket_idx = utils.getBucketIndex(dist);
         const bucket = &self.buckets[bucket_idx];
 
         for (bucket.items) |item| {
@@ -68,7 +68,7 @@ pub const RoutingTable = struct {
         }
 
         const oldest = bucket.items[0]; // assume index 0 for now
-        const success = try self.ping_node(oldest);
+        const success = try self.pingNode(oldest);
 
         if (!success) {
             bucket.items[0] = RoutingEntry{
@@ -81,13 +81,13 @@ pub const RoutingTable = struct {
         }
     }
 
-    pub fn get_k_closest_nodes(self: *RoutingTable, target: NodeId, k: usize) []const NodeId {
-        var all_nodes: [constants.MAX_NODE_COUNT]NodeId = undefined;
+    pub fn getKClosest(self: *RoutingTable, target: NodeId, k: usize) []const NodeId {
+        var all_nodes: [constants.max_node_count]NodeId = undefined;
         var count: usize = 0;
 
         for (self.buckets) |bucket| {
-            for (bucket.items) |bucket_node| {
-                all_nodes[count] = bucket_node.id;
+            for (bucket.items) |bucketNode| {
+                all_nodes[count] = bucketNode.id;
                 count += 1;
             }
         }
@@ -97,15 +97,15 @@ pub const RoutingTable = struct {
         return all_nodes[0..@min(k, count)];
     }
 
-    pub fn get_closest_node(self: *RoutingTable, target: NodeId) NodeId {
+    pub fn getClosest(self: *RoutingTable, target: NodeId) NodeId {
         var closest: ?NodeId = null;
         var closest_dist: [20]u8 = undefined;
         for (self.buckets) |bucket| {
-            for (bucket.items) |bucket_node| {
-                const dist = utils.xor_distance(bucket_node.id.id, target.id);
+            for (bucket.items) |bucketNode| {
+                const dist = utils.xorDistance(bucketNode.id.id, target.id);
 
-                if (closest == null or utils.compare_xor_distance(dist, closest_dist) == -1) {
-                    closest = bucket_node.id;
+                if (closest == null or utils.compareXorDistance(dist, closest_dist) == -1) {
+                    closest = bucketNode.id;
                     closest_dist = dist;
                 }
             }
@@ -120,9 +120,9 @@ pub const RoutingTable = struct {
             const count = bucket.items.len;
             if (count > 0) {
                 try stdout.print("  Bucket {} ({} nodes):\n", .{ i, count });
-                for (bucket.items, 0..) |bucket_node, j| {
+                for (bucket.items, 0..) |bucketNode, j| {
                     try stdout.print("    Node {}: ", .{j});
-                    for (bucket_node.id.id) |byte| {
+                    for (bucketNode.id.id) |byte| {
                         try stdout.print("{x:0>2}", .{byte});
                     }
                     try stdout.print("\n", .{});
@@ -146,7 +146,7 @@ test "add node" {
     const id = [_]u8{0x11} ++ [_]u8{0} ** 19;
     var table = try RoutingTable.init(allocator, id);
     const new_node = NodeId{ .id = [_]u8{0x13} ++ [_]u8{0} ** 19 };
-    try table.add_node(new_node);
+    try table.addNode(new_node);
 }
 
 test "get closest" {
@@ -155,7 +155,7 @@ test "get closest" {
     const id = [_]u8{0x11} ++ [_]u8{0} ** 19;
     var table = try RoutingTable.init(allocator, id);
     const new_node = NodeId{ .id = [_]u8{0x11} ++ [_]u8{0} ** 19 };
-    try table.add_node(new_node);
-    const closest = table.get_closest_node(new_node);
+    try table.addNode(new_node);
+    const closest = table.getClosest(new_node);
     try std.testing.expectEqual(closest.id, new_node.id);
 }
