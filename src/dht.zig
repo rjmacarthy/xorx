@@ -4,15 +4,12 @@ const utils = @import("utils.zig");
 
 const Node = node.Node;
 const NodeId = node.NodeId;
-const RndGen = std.Random.DefaultPrng;
 
 pub const DHT = struct {
     local_node: Node,
 
-    pub fn init(seed: u64) !DHT {
-        var prng = RndGen.init(seed);
-        const rand = prng.random();
-        const local_id = NodeId.random(rand);
+    pub fn init() !DHT {
+        const local_id = NodeId.random();
         return DHT{
             .local_node = try Node.init(local_id),
         };
@@ -47,7 +44,7 @@ pub const DHTNetwork = struct {
 
         var i: usize = 0;
         while (i < 10) : (i += 1) {
-            result.dhts[i] = try DHT.init(@intCast(i + 42));
+            result.dhts[i] = try DHT.init();
         }
 
         return result;

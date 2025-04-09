@@ -15,7 +15,7 @@ const os = std.os;
 pub fn main() !void {
     var net = try dht.DHTNetwork.init();
 
-    const target = try Node.init(NodeId{ .id = [_]u8{0} ** 20 });
+    const target = try Node.init(NodeId.random());
     const closest = net.lookup(0, target.id);
 
     try closest.print("Final closest");
@@ -26,11 +26,11 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(std.heap.page_allocator);
     if (args.len < 1) return error.MissingArgument;
 
-    if (std.mem.eql(u8, args[0], "server")) {
+    if (std.mem.eql(u8, args[1], "server")) {
         try server.runServer();
-    } else if (std.mem.eql(u8, args[0], "client")) {
+    } else if (std.mem.eql(u8, args[1], "client")) {
         try client.runClient();
     } else {
-        std.debug.print("Usage: zig run main.zig -- server|client\n", .{});
+        std.debug.print("Usage: zig run -- server|client\n", .{});
     }
 }

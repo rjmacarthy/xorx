@@ -2,19 +2,25 @@ const std = @import("std");
 const routing_table = @import("routing_table.zig");
 const dht = @import("dht.zig");
 const RoutingTable = routing_table.RoutingTable;
-
+const RndGen = std.Random.DefaultPrng;
 const DHT = dht.DHT;
 
 pub const NodeId = struct {
     id: [20]u8,
-    pub fn random(rnd: std.Random) NodeId {
-        var id = NodeId{ .id = undefined };
-        rnd.bytes(&id.id);
-        return id;
+    pub fn random() NodeId {
+        var seed: u64 = undefined;
+        std.crypto.random.bytes(std.mem.asBytes(&seed));
+        var prng = RndGen.init(seed);
+        const rand = prng.random();
+        var node_id = NodeId{ .id = undefined };
+        rand.bytes(&node_id.id);
+        return node_id;
     }
+
     pub fn fromBytes(bytes: [20]u8) NodeId {
         return NodeId{ .id = bytes };
     }
+
     pub fn print(self: *const NodeId, label: []const u8) !void {
         const stdout = std.io.getStdOut().writer();
         try stdout.print("{s}: ", .{label});
