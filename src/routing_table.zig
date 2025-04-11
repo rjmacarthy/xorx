@@ -5,9 +5,8 @@ const utils = @import("utils.zig");
 const constants = @import("constants.zig");
 
 const NodeId = node.NodeId;
+const K = constants.k;
 const mem = std.mem;
-const BUCKET_COUNT = 160;
-const K = 8;
 
 const RoutingEntry = struct {
     id: NodeId,
@@ -16,11 +15,11 @@ const RoutingEntry = struct {
 };
 
 pub const RoutingTable = struct {
-    buckets: [BUCKET_COUNT]std.ArrayList(RoutingEntry),
+    buckets: [constants.bucket_count]std.ArrayList(RoutingEntry),
     local_id: [20]u8,
 
     pub fn init(allocator: std.mem.Allocator, local_id: [20]u8) !RoutingTable {
-        var buckets: [BUCKET_COUNT]std.ArrayList(RoutingEntry) = undefined;
+        var buckets: [constants.bucket_count]std.ArrayList(RoutingEntry) = undefined;
 
         for (&buckets) |*bucket| {
             bucket.* = std.ArrayList(RoutingEntry).init(allocator);

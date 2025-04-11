@@ -1,4 +1,11 @@
 const std = @import("std");
+const io = std.io;
+
+const node = @import("node.zig");
+const constants = @import("constants.zig");
+
+const NodeId = node.NodeId;
+const K = constants.k;
 
 pub const MessageType = enum(u8) {
     Ping = 0,
@@ -33,6 +40,102 @@ pub const Message = struct {
         };
     }
 };
+
+pub const FindNode = struct {
+    from_id: NodeId,
+    target_id: NodeId,
+
+    pub fn encode(self: *FindNode, writer: anytype) !void {
+        try writer.writeAll(&self.from_id.id);
+        try writer.writeAll(&self.target_id.id);
+    }
+
+    pub fn decode(reader: anytype) !FindNode {
+        var from_buf: [20]u8 = undefined;
+        var target_buf: [20]u8 = undefined;
+
+        try reader.readNoEof(&from_buf);
+        try reader.readNoEof(&target_buf);
+
+        return FindNode{
+            .from_id = NodeId{ .id = from_buf },
+            .target_id = NodeId{ .id = target_buf },
+        };
+    }
+};
+
+test "FindNode" {
+    var buf: [40]u8 = [_]u8{0} ** 40;
+    var find_node = FindNode{
+        .from_id = NodeId.random(),
+        .target_id = NodeId.random(),
+    };
+    var stream = std.io.fixedBufferStream(&buf);
+    try find_node.encode(stream.writer());
+    stream.reset();
+    const decoded = try FindNode.decode(stream.reader());
+    try std.testing.expectEqualSlices(u8, &find_node.from_id.id, &decoded.from_id.id);
+    try std.testing.expectEqualSlices(u8, &find_node.target_id.id, &decoded.target_id.id);
+}
+
+pub const FindNodeResponse = struct {
+    from_id: NodeId,
+    count: u8,
+    nodes: [K]NodeId,
+
+    pub fn encode(self: *FindNodeResponse, writer: anytype) !void {
+        try writer.writeAll(&self.from_id.id);
+        try writer.writeByte(self.count);
+
+        for (0..self.count) |i| {
+            try writer.writeAll(&self.nodes[i].id);
+        }
+    }
+
+    pub fn decode(reader: anytype) !FindNodeResponse {
+        var from_id_buf: [20]u8 = undefined;
+        try reader.readNoEof(&from_id_buf);
+
+        const count = try reader.readByte();
+
+        var nodes: [K]NodeId = undefined;
+
+        for (0..count) |i| {
+            var node_buf: [20]u8 = undefined;
+            try reader.readNoEof(&node_buf);
+            nodes[i] = NodeId{ .id = node_buf };
+        }
+
+        return FindNodeResponse{
+            .from_id = NodeId{ .id = from_id_buf },
+            .count = count,
+            .nodes = nodes,
+        };
+    }
+};
+
+test "FindNodeResponse" {
+    var buf: [1024]u8 = undefined;
+    var stream = std.io.fixedBufferStream(&buf);
+
+    const node1 = NodeId.random();
+    const node2 = NodeId.random();
+
+    var response = FindNodeResponse{
+        .from_id = node1,
+        .count = 2,
+        .nodes = [_]NodeId{ node1, node2 } ++ [_]NodeId{undefined} ** (K - 2),
+    };
+
+    try response.encode(stream.writer());
+
+    stream.reset();
+
+    const decoded = try FindNodeResponse.decode(stream.reader());
+
+    try std.testing.expectEqualSlices(u8, &node1.id, &decoded.from_id.id);
+    try std.testing.expectEqualSlices(u8, &node2.id, &decoded.nodes[1].id);
+}
 
 test "message decoder" {
     const buffer = [_]u8{} ++ [_]u8{ 0, 10 } ** (1024);
